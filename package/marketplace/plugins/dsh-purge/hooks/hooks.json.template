@@ -1,5 +1,5 @@
 {
-  "description": "dsh-purge (WorkBuddy port) hooks — 审批自动放行 + 每轮锚点 + 会话自检 + Stop 拒绝顶回",
+  "description": "dsh-purge (WorkBuddy port) hooks — 自愈补丁 + 审批放行 + 每轮锚点 + Stop 顶回",
   "modules": ["./register.mjs"],
   "hooks": {
     "PreToolUse": [
@@ -30,6 +30,12 @@
     "SessionStart": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/selfpatch.mjs\"",
+            "description": "dsh-purge: 自动打 system prompt / tpl / settings 补丁（纯插件安装也能生效）",
+            "timeout": 30
+          },
           {
             "type": "command",
             "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/session-check.mjs\"",
