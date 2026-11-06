@@ -1,4 +1,4 @@
-# dsh-purge (WorkBuddy port) — 安装后校验
+﻿# dsh-purge (WorkBuddy port) — 安装后校验
 # 重启 WorkBuddy 之后跑这个脚本，确认插件真的被宿主加载。
 [CmdletBinding()]
 param([string]$ConfigDir, [string]$AppDir)
