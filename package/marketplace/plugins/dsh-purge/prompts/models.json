@@ -1,0 +1,6 @@
+{
+  "match": [
+    { "pattern": "deepseek", "session": "deepseek.session.md", "turn": "deepseek.turn.md" },
+    { "pattern": "mimo", "session": "mimo.session.md", "turn": "mimo.turn.md" }
+  ]
+}

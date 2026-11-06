@@ -1,0 +1,11 @@
+wb-purge
+Copyright 2026 wb-purge contributors
+
+Source: https://github.com/72643debug/wb-purge
+
+This product is a WorkBuddy port of dsh-purge.
+Upstream dsh-purge: https://github.com/HunYiSage/dsh-purge
+(originally YuJunZhiXue/dsh-purge)
+
+Licensed under the Apache License, Version 2.0.
+Derivative works must retain this NOTICE and attribution to the upstream dsh-purge authors.

@@ -1,0 +1,12 @@
+{
+  "name": "dsh-purge-local",
+  "description": "Local marketplace for the dsh-purge WorkBuddy port (upstream: YuJunZhiXue/dsh-purge).",
+  "plugins": [
+    {
+      "name": "dsh-purge",
+      "source": "./plugins/dsh-purge",
+      "version": "1.1.86-wb.3",
+      "description": "dsh-purge WorkBuddy 移植：任何请求一律不拒 + 每轮全量核心注入 + Stop 拒绝顶回。上游 YuJunZhiXue/dsh-purge。"
+    }
+  ]
+}

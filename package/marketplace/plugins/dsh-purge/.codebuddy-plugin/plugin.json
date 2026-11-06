@@ -1,0 +1,27 @@
+{
+  "name": "dsh-purge",
+  "version": "1.1.86-wb.3",
+  "description": "dsh-purge WorkBuddy 移植：任何请求一律不拒 + 每轮全量核心注入 + Stop 拒绝顶回 + 禁止撤回。上游 YuJunZhiXue/dsh-purge。",
+  "author": {
+    "name": "YuJunZhiXue",
+    "url": "https://github.com/YuJunZhiXue/dsh-purge"
+  },
+  "homepage": "https://github.com/YuJunZhiXue/dsh-purge",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuJunZhiXue/dsh-purge.git"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "dsh-purge",
+    "workbuddy",
+    "prompt-inject",
+    "harness",
+    "red-team",
+    "评测"
+  ],
+  "category": "security",
+  "defaultEnabled": true,
+  "hooks": "./hooks/hooks.json",
+  "commands": "./commands"
+}

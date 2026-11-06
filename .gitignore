@@ -1,0 +1,19 @@
+# 本机 / 不上传
+node_modules/
+*.tgz
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+.scratch/
+*.bak
+*.asar
+*.asar.bak
+
+# 逆向草稿与宿主解包（本机研究用，不进仓库）
+re/
+tools/restore-product-original.mjs.bak
+
+# 本地状态（仅仓库根下的运行时目录，不忽略 package/.../plugins/dsh-purge 插件源码）
+/dsh-purge/
+*.local.json
