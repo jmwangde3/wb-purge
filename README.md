@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.3`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.4`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
