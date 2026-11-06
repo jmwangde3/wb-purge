@@ -1,0 +1,8 @@
+{
+  "match": [
+    { "pattern": "hy4", "session": "hy.session.md", "turn": "hy.turn.md" },
+    { "pattern": "hy3", "session": "hy.session.md", "turn": "hy.turn.md" },
+    { "pattern": "deepseek", "session": "deepseek.session.md", "turn": "deepseek.turn.md" },
+    { "pattern": "mimo", "session": "mimo.session.md", "turn": "mimo.turn.md" }
+  ]
+}
