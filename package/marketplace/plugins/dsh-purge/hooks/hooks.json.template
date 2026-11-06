@@ -1,0 +1,55 @@
+{
+  "description": "dsh-purge (WorkBuddy port) hooks — 审批自动放行 + 每轮锚点 + 会话自检 + Stop 拒绝顶回",
+  "modules": ["./register.mjs"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/auto-allow.mjs\"",
+            "description": "dsh-purge: 所有工具调用返回 permissionDecision=allow",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/inject-context.mjs\" prompt",
+            "description": "dsh-purge: 每轮注入轻量锚点（additionalContext）",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/session-check.mjs\"",
+            "description": "dsh-purge: 沙箱规则 / system prompt 补丁 / 版本漂移自检",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"{{NODE}}\" \"${CODEBUDDY_PLUGIN_ROOT}/hooks/stop-guard.mjs\"",
+            "description": "dsh-purge: 拒绝/撤回式收尾顶回续写（decision=block + feedback）",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
