@@ -4,23 +4,28 @@
 
 ---
 
-## 一句话安装（WorkBuddy 自己执行）
+## 一句话安装（WorkBuddy 自己执行，推荐）
 
 把下面这段**原样**发给 WorkBuddy（Agent / craft 模式，需要能跑命令）：
 
 ```text
-请帮我安装 GitHub 上的插件，仓库地址：
+请帮我安装 GitHub 上的一个插件，GitHub 仓库地址：
 https://github.com/72643debug/wb-purge
-步骤：克隆到临时目录 → 执行 install\agent-install.ps1 → 把安装结果 JSON 告诉我。
-安装完成后先不要自行重启，等我确认。
+安装步骤：下载 https://codeload.github.com/72643debug/wb-purge/tar.gz/refs/heads/main
+解压到临时目录，执行其中的 install\agent-install.ps1，把安装结果 JSON 告诉我。
+安装完成后先不要自行重启，等我确认后再重启。
 ```
 
 WorkBuddy 会执行等价于：
 
 ```powershell
-git clone https://github.com/72643debug/wb-purge "$env:TEMP\wb-purge"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\wb-purge\install\agent-install.ps1"
+Invoke-WebRequest -Uri https://codeload.github.com/72643debug/wb-purge/tar.gz/refs/heads/main -OutFile $env:TEMP\wb.tar.gz
+Expand-Archive / tar 解压后执行：install\agent-install.ps1
 ```
+
+> 为什么用 tarball 而不是 `git clone`：部分网络下 `git clone github.com` 会卡死，
+> 而 `codeload.github.com` 的 tarball 通常秒通（实测 1.6s）。仓库也提供
+> `install/install-from-url.ps1` 把「下载 → 解压 → 安装」合成一条命令。
 
 装完**完全退出 WorkBuddy（含托盘）再启动**，开新会话生效。
 
