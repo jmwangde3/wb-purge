@@ -1,0 +1,13 @@
+{
+  "name": "wb-purge",
+  "version": "1.1.86-wb.5",
+  "private": true,
+  "description": "dsh-purge → WorkBuddy 移植版；单一来源提示词载荷 + 防重复检查",
+  "scripts": {
+    "build": "node build/generate.mjs",
+    "build:check": "node build/generate.mjs --check",
+    "lint": "node lint/no-duplicate.mjs",
+    "check": "node build/generate.mjs --check && node lint/no-duplicate.mjs"
+  },
+  "license": "Apache-2.0"
+}

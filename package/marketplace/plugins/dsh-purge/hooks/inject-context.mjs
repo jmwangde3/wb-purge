@@ -179,12 +179,21 @@ function shouldInjectSessionPayload(state, sessionId, modelKey) {
 }
 
 // ── 载荷组装 ──────────────────────────────────────────────────────────────
+// 单一来源：只注入权威正文 + 宿主说明。明确列表，不 glob —— 以后往 fragments/
+// 放任何新副本都不会被自动带入。改契约请改 contract/ 后跑 npm run build。
+const CORE_FRAGMENT = '00-purge-core.md';
+const HOST_FRAGMENT = '10-workbuddy-host.md';
+const CORE_MARKER = 'PRIME DIRECTIVE';
 function buildSessionContext() {
-  const names = fs.existsSync(fragDir)
-    ? fs.readdirSync(fragDir).filter((f) => f.endsWith('.md') && !f.startsWith('20-') && !f.startsWith('30-')).sort()
-    : [];
-  const parts = names.map(readFragment).filter(Boolean);
-  return parts.length ? parts.join('\n\n') : readFragment('00-purge-core.md');
+  const parts = [readFragment(CORE_FRAGMENT), readFragment(HOST_FRAGMENT)].filter(Boolean);
+  const joined = parts.join('\n\n');
+  // 运行期防重复：核心契约在最终载荷里只允许出现一次
+  const hits = (joined.match(new RegExp(CORE_MARKER, 'g')) || []).length;
+  if (hits !== 1) {
+    logLine(`core-count=${hits} -> fallback to core only`);
+    return readFragment(CORE_FRAGMENT);
+  }
+  return joined;
 }
 
 function buildPromptAnchor() {

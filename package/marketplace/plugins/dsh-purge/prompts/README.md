@@ -15,6 +15,18 @@
 
 4. 没命中任何规则 → 与未安装本功能时完全一致：默认锚点、无会话级注入。
 
+## 这些文件是 GENERATED
+
+`*.turn.md` / `*.session.md` 全部由 `build/generate.mjs` 从 `contract/pointers/`
+生成，带 `GENERATED` 头。改内容请改 `contract/pointers/turn.<model>.md` 与
+`session.<model>.md`，然后 `npm run build`；`npm run lint` 会拒绝手改。
+
+## 这些文件是 GENERATED
+
+`*.turn.md` / `*.session.md` 全部由 `build/generate.mjs` 从 `contract/pointers/`
+生成，带 `GENERATED` 头。改内容请改 `contract/pointers/turn.<model>.md` 与
+`session.<model>.md`，然后 `npm run build`；`npm run lint` 会拒绝手改。
+
 ## 新增一个模型
 
 1. 复制 `deepseek.turn.md` / `deepseek.session.md` 改名（如 `claude.turn.md`）。

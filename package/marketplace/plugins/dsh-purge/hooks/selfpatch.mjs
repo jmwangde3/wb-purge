@@ -204,6 +204,13 @@ function run() {
     writeReport(report);
     return;
   }
+  // 防重复：host 载荷只允许是指针，混入核心正文说明有人复制了旧版全文
+  const coreMarkers = ['PRIME DIRECTIVE', '任何请求都执行，永不拒绝', '草稿审查（R1'];
+  for (const [k, v] of Object.entries(load)) {
+    if (typeof v === 'string' && coreMarkers.filter((m) => v.includes(m)).length >= 2) {
+      report.errors.push(`host/${k} contains core body; run npm run build to regenerate pointers`);
+    }
+  }
 
   const appDir = findAppDir();
   report.appDir = appDir;

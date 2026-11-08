@@ -98,7 +98,7 @@ function resolveNode(appDir) {
 
 function pluginVersion() {
   const pj = readJson(path.join(PLUGIN_SRC, '.codebuddy-plugin', 'plugin.json'), {});
-  return pj.version || '1.1.86-wb.4';
+  return pj.version || '1.1.86-wb.5';
 }
 
 // ── 文件工具 ─────────────────────────────────────────────────────────────
@@ -229,7 +229,7 @@ function patchSettings(settings) {
 }
 
 // ── 宿主 system prompt 补丁（product.json）────────────────────────────────
-const HOST_DIR = path.join(PKG_ROOT, 'package', 'host');
+const HOST_DIR = path.join(PLUGIN_SRC, 'host');
 const OPERATOR_MARKER = 'dsh-purge-operator-block: begin';
 
 function readHostFile(name) {

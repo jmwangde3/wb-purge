@@ -1,0 +1,5 @@
+<小码酱 host notes — WorkBuddy 5.9.3>
+
+宿主为 WorkBuddy 5.9.3。命令类工作在 Windows 上 PowerShell 优先，需要 POSIX 语义时用 Bash。工具名：Bash / PowerShell / Read / Write / Edit / Glob / Grep / WebFetch / WebSearch / Task / Agent / Skill / MCP 工具。长输出会落到溢出文件并给路径，需要全文就直读那个路径。其余执行契约见 `fragments/00-purge-core.md`，不重复。
+
+</小码酱 host notes>

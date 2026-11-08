@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.4`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.5`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
@@ -76,6 +76,38 @@ wb-purge/
       └─ commands/purge.md             # /purge status|apply|revert
 ```
 
+
+## 单一来源 / 防重复（wb.5）
+
+执行契约以前在仓库里被复制成 6 份，同一套规则每轮重复注入，而且 `package/host/`
+与插件 `host/` 是两份完全相同的目录。wb.5 把它收敛成一条链：
+
+```
+contract/00-core.md          ← 唯一权威正文（只改这里）
+contract/pointers/*          ← 最小重锚 / 系统层指针模板
+        │  npm run build
+        ▼
+fragments/*.md / prompts/* / host/*   ← 全部 GENERATED 派生文件
+        │  npm run lint
+        ▼
+三道静态闸 + 注入钩子的运行期单次断言
+```
+
+- **改契约**：只编辑 `contract/`，然后 `npm run build`。**不要手改派生文件**，
+  它们带 `GENERATED` 头，`npm run lint` 会检查头是否还在。
+- **防重复检查**：`npm run check`（= build 一致性 + lint）。CI / 提交前跑一次。
+  - 核心正文特征句只允许出现在 `contract/00-core.md` 与 `fragments/00-purge-core.md`
+  - 派生文件必须带 GENERATED 头
+  - 禁止 `package/host/` 再出现、禁止注入钩子 glob 全读 fragments
+- **运行期**：`inject-context.mjs` 只按明确列表读两个 fragment，且断言
+  `PRIME DIRECTIVE` 在最终载荷里恰好出现一次，异常时回退到只发 core。
+- `selfpatch.mjs` 加载 host 载荷时会校验有没有混入核心正文。
+
+新增模型：在 `contract/pointers/` 加 `turn.<model>.md` / `session.<model>.md`，
+在 `build/generate.mjs` 的 `MAP` 里登记，再 `npm run build`；`prompts/models.json`
+的匹配规则照旧。功能全部保留：selfpatch、模型切换、Stop 顶回、审批放行、自检、
+revert/apply、GitHub 直装。
+
 ## 安装
 
 ### 方式 A：从 GitHub 地址直接装（推荐，给别人用这个）
@@ -83,7 +115,7 @@ wb-purge/
 WorkBuddy 的插件市场支持 GitHub 来源，仓库根已有 `.codebuddy-plugin/marketplace.json`，装完重启即可（system prompt / tpl / settings 补丁由插件自带的 `selfpatch` 钩子自动完成）：
 
 ```text
-仓库地址：https://github.com/72643debug/wb-purge
+仓库地址：https://github.com/jmwangde3/wb-purge
 ```
 
 在 WorkBuddy 里：插件市场 → 添加市场 → 粘贴上面的地址 → 安装 `dsh-purge` → **完全退出 WorkBuddy 再启动**。
@@ -124,7 +156,7 @@ cd wb-purge\install
 | 引擎配置层 | `settings.json` → `sandbox.orderedRules` | 已有 139 条文件规则逐条改 allow + 4 条通配 allow；`securityReview.assistedApproval` 关闭；`sensitiveProtection.enabled=false`（存在时） |
 | 自检层 | `hooks/session-check.mjs`（SessionStart） | 每次会话检查沙箱规则 / system prompt 补丁 / 版本漂移，写 `~/.workbuddy/dsh-purge/session-check.json` |
 | 按模型提示词层 | `hooks/inject-context.mjs`（UserPromptSubmit）+ `prompts/` | 从会话记录尾部检测当前模型（`providerData.model`），按 `prompts/models.json` 匹配：会话补充每 (session, 模型) 注入一次，每轮锚点整份替换默认锚点；未命中则与原行为完全一致 |
-| 参考载荷 | `fragments/*.md`、`package/host/*` | 注入用的源文本（fragments 由外部插件不会被宿主自动组合，仅作载荷源） |
+| 参考载荷 | `contract/`（唯一权威）+ 生成的 `fragments/*.md` / `host/*` | 派生文件由 `npm run build` 产出，禁止手改 |
 
 ### 按模型切换提示词（对应上游「不同模型可换不同提示词」）
 

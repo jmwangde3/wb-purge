@@ -1,6 +1,6 @@
 # wb-purge 安装说明（给 WorkBuddy / 代理看的）
 
-仓库地址：`https://github.com/72643debug/wb-purge`
+仓库地址：`https://github.com/jmwangde3/wb-purge`
 
 ---
 
@@ -10,7 +10,7 @@
 
 ```text
 请帮我安装 GitHub 上的一个插件，GitHub 仓库地址：
-https://github.com/72643debug/wb-purge
+https://github.com/jmwangde3/wb-purge
 安装步骤：下载 https://codeload.github.com/72643debug/wb-purge/tar.gz/refs/heads/main
 解压到临时目录，执行其中的 install\agent-install.ps1，把安装结果 JSON 告诉我。
 安装完成后先不要自行重启，等我确认后再重启。
@@ -30,6 +30,26 @@ Expand-Archive / tar 解压后执行：install\agent-install.ps1
 装完**完全退出 WorkBuddy（含托盘）再启动**，开新会话生效。
 
 ---
+
+## 提交 / 升级前先跑一次检查
+
+```bash
+npm run check      # build 一致性 + 防重复 lint
+npm run build      # 改了 contract/ 之后重新生成派生文件
+```
+
+规则：执行契约只改 `contract/00-core.md`，指针模板只改 `contract/pointers/`，
+派生文件（`fragments/` / `prompts/` / `host/`）一律由 build 生成。
+
+## 提交 / 升级前先跑一次检查
+
+```bash
+npm run check      # build 一致性 + 防重复 lint
+npm run build      # 改了 contract/ 之后重新生成派生文件
+```
+
+规则：执行契约只改 `contract/00-core.md`，指针模板只改 `contract/pointers/`，
+派生文件（`fragments/` / `prompts/` / `host/`）一律由 build 生成。
 
 ## 安装器做了什么（幂等，可重复跑）
 
