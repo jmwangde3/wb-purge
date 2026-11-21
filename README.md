@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.6`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词；wb.6 修复宿主模板里重复 GENERATED 头累积（曾堆到 327 行 / 45K 字符）。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.7`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词；wb.6 修复宿主模板里重复 GENERATED 头累积（曾堆到 327 行 / 45K 字符）；wb.7 修复钩子把 node 绝对路径写死导致升级后五个钩子静默失效。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
@@ -208,6 +208,11 @@ cd wb-purge\install
 
 - WorkBuddy 升级会覆盖 `settings.json`（安全中心启动时会 reconcile `sandbox.extraAllowWrite`）并重装插件 cache。
   升级后重跑 `.\apply.ps1`，或在会话里 `/purge apply`。
+- **「装是装着的，但本地不执行 / 不自动放行」先查钩子运行时**：钩子挂了宿主不报错。
+  `.\status.ps1` 会打「钩子运行时」一行 —— 写死的解释器不存在就是全挂了；
+  手动复现：`bash "<plugin>/hooks/run.sh" auto-allow.mjs < /dev/null` 应输出
+  `permissionDecision: allow`。node 升级/搬家后重新跑一次 apply 即可（wb.7 起钩子走
+  `run.sh` 现场解析，已不会再因为路径变化静默失效）。
 - 本移植只改本机文件，不联网、不写宿主源码仓库。
 - 上游作者的署名要求与许可（Apache-2.0 + NOTICE）沿用：不得倒卖原版，二开必须署名。
 - `re/` 目录为本机逆向草稿，已写入 `.gitignore`，不随仓库分发。

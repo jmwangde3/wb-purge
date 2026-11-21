@@ -17,3 +17,5 @@ tools/restore-product-original.mjs.bak
 # 本地状态（仅仓库根下的运行时目录，不忽略 package/.../plugins/dsh-purge 插件源码）
 /dsh-purge/
 *.local.json
+# 安装时写入的本机 node 路径提示，不进仓库
+hooks/node-path.txt

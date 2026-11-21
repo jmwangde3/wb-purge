@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.1.86-wb.7 — 修复钩子静默失效（node 路径写死）（2026-11-22）
+
+问题：本机 node 从 `C:\Users\jmwan\tools\node-v22.14.0-win-x64\node.exe` 搬到
+`C:\Users\jmwan\tools\node\node.exe` 之后，**五个钩子全部静默失效** —— 宿主不报错、
+不提示，表现就是「装是装着的，但本地不执行 / 不再自动放行 / 每轮注入没了」。
+
+根因：`hooks.json` 在安装时把 node 绝对路径写死进 command（`"{{NODE}}"` 占位符），
+路径一失效，`spawn` 直接失败，宿主把钩子错误吞掉。
+
+改动：
+
+- `hooks/hooks.json.template`：命令统一改为
+  `bash "${CODEBUDDY_PLUGIN_ROOT}/hooks/run.sh" <script>`，不再出现任何绝对解释器路径。
+- `hooks/run.sh`：重写解析顺序 —— `$DSH_PURGE_NODE` / `$CODEBUDDY_NODE_BIN` →
+  `hooks/node-path.txt`（安装时写的提示）→ PATH → `cmd //c where node` →
+  `~/tools/node`、`~/tools/node-v*`、Program Files、nvm、/usr/local 等 →
+  `WorkBuddy.exe` + `ELECTRON_RUN_AS_NODE=1`。全找不到时写
+  `<configDir>/dsh-purge/hook-launch.log` 并 exit 0（fail-open）。
+- `install/purge.mjs`：apply 时除 hooks.json 外写 `hooks/node-path.txt`；
+  `status` 新增「钩子运行时」体检 —— 写死的解释器不存在会直接报
+  「五个钩子此刻全部静默失效」，不再让这种故障静默。
+- `lint/no-duplicate.mjs`：hooks.json 模板出现 `{{NODE}}` 或缺 `run.sh` 直接失败。
+- `.gitignore`：忽略 `hooks/node-path.txt`（每台机器不同）。
+- 版本 `1.1.86-wb.6` → `1.1.86-wb.7`。
+
+升级后**必须完全退出 WorkBuddy 再启动**（宿主把 hooks 配置读进内存）。
+
 ## 1.1.86-wb.6 — 修复 GENERATED 头重复累积（2026-11-22）
 
 问题：装到机器上跑一段时间后，宿主 `cli-agent-prompt` 模板被一长串完全相同的

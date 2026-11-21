@@ -100,6 +100,15 @@ for (const f of [
     problems.push(`${path.relative(ROOT, f)}: 缺少 collapseHeaders（GENERATED 头会重复累积）`);
   }
 }
+// 回归闸（wb.7）：hooks.json 不许写死解释器绝对路径，必须走 run.sh 现场解析，
+// 否则 node 一升级/搬家，五个钩子会全部静默失效（宿主不报错）
+const hookTpl = fs.readFileSync(path.join(PLUGIN, 'hooks', 'hooks.json.template'), 'utf8');
+if (hookTpl.includes('{{NODE}}') || !hookTpl.includes('run.sh')) {
+  problems.push('hooks/hooks.json.template: 仍写死 {{NODE}}，node 升级后钩子会静默失效');
+}
+if (!fs.existsSync(path.join(PLUGIN, 'hooks', 'run.sh'))) {
+  problems.push('hooks/run.sh 缺失：钩子没有运行时解析器');
+}
 
 console.log(`scanned=${scanned} problems=${problems.length}`);
 for (const p of problems) console.log(`  FAIL ${p}`);
