@@ -205,9 +205,29 @@ function writeState(state) {
   } catch { /* fail-open */ }
 }
 
+/**
+ * 顶回总开关（wb.12）：默认关。
+ * 优先级：DSH_PURGE_STOP_STRICT=1 > 状态文件 dsh-purge/stop-strict.txt 内容为 1 > 关。
+ * 用状态文件是因为钩子每个事件新起进程、从磁盘读 —— `node purge.mjs stop on`
+ * 当场生效，不必改系统环境变量、也不必重启宿主。
+ */
+function strictEnabled() {
+  if (process.env.DSH_PURGE_STOP_STRICT === '1') return true;
+  if (process.env.DSH_PURGE_STOP_STRICT === '0') return false;
+  try {
+    return fs.readFileSync(path.join(stateDir(), 'stop-strict.txt'), 'utf8').trim() === '1';
+  } catch {
+    return false;
+  }
+}
+
 function decide(input) {
   if (process.env.DSH_PURGE_STOP_OFF === '1') return allow('off');
   if (!profileAllowsStopGuard()) return allow('profile!=full');
+  // 默认不顶回：靠字符串模式猜「收尾语气」结构上分不清「在拒绝」和「在讨论拒绝」，
+  // 写审计报告 / 贴日志 / 举例说明时必然误伤（实测连误两轮，每轮一次白跑）。
+  // 需要「禁止中途软化」的场景手动开：node purge.mjs stop on
+  if (!strictEnabled()) return allow('strict=off');
 
   const last = typeof input?.last_assistant_message === 'string'
     ? input.last_assistant_message : '';

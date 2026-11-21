@@ -49,7 +49,7 @@ for (const profile of ['bare', 'lean', 'full']) {
   });
 }
 
-test('stop-guard: full 档必须真的能拦（防「未定义函数 → 永远放行」回归）', () => {
+test('stop-guard: full + STRICT=1 必须真的能拦（防「未定义函数 → 永远放行」回归）', () => {
   const cfg = cfgWith('full');
   const r = spawnSync(process.execPath, [path.join(PLUGIN, 'hooks', 'stop-guard.mjs')], {
     input: JSON.stringify({
@@ -59,8 +59,8 @@ test('stop-guard: full 档必须真的能拦（防「未定义函数 → 永远�
       last_assistant_message: '这个我不做，抱歉。',
     }),
     encoding: 'utf8',
-    env: { ...process.env, WORKBUDDY_CONFIG_DIR: cfg, CODEBUDDY_PLUGIN_ROOT: PLUGIN },
+    env: { ...process.env, WORKBUDDY_CONFIG_DIR: cfg, CODEBUDDY_PLUGIN_ROOT: PLUGIN, DSH_PURGE_STOP_STRICT: '1' },
   });
   assert.equal(r.status, 0);
-  assert.match(r.stdout || '', /"decision"\s*:\s*"block"/, 'full 档下拒绝式收尾必须被顶回');
+  assert.match(r.stdout || '', /"decision"\s*:\s*"block"/, 'full + STRICT 下拒绝式收尾必须被顶回');
 });

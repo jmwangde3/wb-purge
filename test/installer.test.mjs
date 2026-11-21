@@ -175,3 +175,26 @@ test('revert: 回收登记、删 profile.json 与插件目录', () => {
   assert.ok(!fs.existsSync(path.join(env.cfgDir, 'dsh-purge', 'profile.json')));
   assert.ok(!fs.existsSync(path.join(env.cfgDir, 'plugins', 'marketplaces', 'dsh-purge-local')));
 });
+
+test('stop 开关：on/off 写状态文件、status 如实显示、off 后文件移除', () => {
+  const env = sandbox();
+  const flag = path.join(env.cfgDir, 'dsh-purge', 'stop-strict.txt');
+
+  run(env, 'apply', '--profile', 'full');
+  assert.ok(!fs.existsSync(flag), '默认不开启');
+
+  const on = run(env, 'stop', 'on');
+  assert.equal(on.status, 0, on.stdout + on.stderr);
+  assert.equal(fs.readFileSync(flag, 'utf8').trim(), '1');
+
+  assert.match(run(env, 'status').stdout, /stop 顶回\s+开启/);
+
+  const off = run(env, 'stop', 'off');
+  assert.equal(off.status, 0, off.stdout + off.stderr);
+  assert.ok(!fs.existsSync(flag), 'off 必须移除状态文件');
+  assert.match(run(env, 'status').stdout, /stop 顶回\s+关闭/);
+
+  // 非 full 档开 STRICT 要提示「仍不会顶回」
+  run(env, 'apply', '--profile', 'lean');
+  assert.match(run(env, 'stop', 'on').stdout, /非 full 档仍不会顶回/);
+});

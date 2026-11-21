@@ -101,7 +101,7 @@ function resolveNode(appDir) {
 
 function pluginVersion() {
   const pj = readJson(path.join(PLUGIN_SRC, '.codebuddy-plugin', 'plugin.json'), {});
-  return pj.version || '1.1.86-wb.11';
+  return pj.version || '1.1.86-wb.12';
 }
 
 // ── 文件工具 ─────────────────────────────────────────────────────────────
@@ -656,6 +656,7 @@ function status() {
     const profile = currentProfile();
     const label = profile === 'full' ? '（full：替换拒绝清单 + operator 块 + 每轮注入核心）' : profile === 'lean' ? '（lean：极度轻量，只替换拒绝清单）' : '（bare：只清审批摩擦，提示词不动）';
     out.push(`  profile        ${profile}${label}`);
+    out.push(`  stop 顶回      ${stopStrictEnabled() ? '开启' : '关闭（默认）'}${profile === 'full' ? '' : ' · 非 full 档本就不顶回'}`);
     const appliedProfile = readJson(APPLIED_FILE, null)?.profile;
     if (appliedProfile && appliedProfile !== profile) {
       out.push(`  ${' '.repeat(13)}⚠ 上次 apply 用的是 ${appliedProfile}，与当前状态不一致`);
@@ -911,14 +912,50 @@ function revert() {
   log.push('市场目录已删除');
   if (fs.existsSync(APPLIED_FILE)) fs.rmSync(APPLIED_FILE);
   if (fs.existsSync(PROFILE_FILE)) fs.rmSync(PROFILE_FILE);
+  if (fs.existsSync(STOP_STRICT_FILE)) fs.rmSync(STOP_STRICT_FILE);
   return `${log.join('\n')}\n\n回滚完成。重启 WorkBuddy 生效。提示词片段随插件目录一并移除。`;
+}
+
+// ── Stop 顶回开关（wb.12）：默认关，只有需要「禁止中途软化」时手动开 ──────
+// 用状态文件而不是环境变量：钩子每个事件新起进程、从磁盘读，开关即时生效，
+// 不必改系统环境变量也不必重启宿主。
+const STOP_STRICT_FILE = path.join(STATE_DIR, 'stop-strict.txt');
+
+function stopStrictEnabled() {
+  try {
+    return fs.readFileSync(STOP_STRICT_FILE, 'utf8').trim() === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setStopStrict(on) {
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+  if (on) writeFileAtomic(STOP_STRICT_FILE, '1\n');
+  else if (fs.existsSync(STOP_STRICT_FILE)) fs.rmSync(STOP_STRICT_FILE);
+  return on;
 }
 
 try {
   if (cmd === 'apply') console.log(apply());
   else if (cmd === 'revert') console.log(revert());
   else if (cmd === 'status') console.log(status());
-  else if (cmd === 'profile') {
+  else if (cmd === 'stop') {
+    // stop [on|off] —— 控制 stop-guard 是否顶回拒绝式收尾
+    const want = String(argv[1] || '').toLowerCase();
+    if (want === 'on' || want === 'off') {
+      setStopStrict(want === 'on');
+      console.log(`stop-guard 顶回: ${want === 'on' ? '已开启' : '已关闭'}`);
+      if (want === 'on' && currentProfile() !== 'full') {
+        console.log(`注意：当前 profile=${currentProfile()}，非 full 档仍不会顶回。先 apply --profile full。`);
+      }
+      console.log('即时生效，无需重启。');
+    } else {
+      console.log(`stop-guard 顶回: ${stopStrictEnabled() ? '开启' : '关闭（默认）'}`);
+      console.log('开启: node purge.mjs stop on   |   关闭: node purge.mjs stop off');
+      console.log('生效条件：profile=full 且开关开启。');
+    }
+  } else if (cmd === 'profile') {
     // profile [light|full] —— 不带参数只打印；带参数等价于 apply --profile
     const want = String(argv[1] || '').toLowerCase();
     if (PROFILES[want]) console.log(apply(want));
@@ -929,7 +966,7 @@ try {
       console.log(`切换: node purge.mjs apply --profile <目标档位>`);
     }
   } else {
-    console.log('用法: node purge.mjs <status|apply|revert|profile> [--profile light|full] [--config-dir DIR] [--app-dir DIR] [--node EXE]');
+    console.log('用法: node purge.mjs <status|apply|revert|profile|stop> [--profile bare|lean|full] [--config-dir DIR] [--app-dir DIR] [--node EXE]');
     process.exitCode = 2;
   }
 } catch (e) {

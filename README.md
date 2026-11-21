@@ -156,8 +156,24 @@ node install/purge.mjs apply --profile bare          # 连拒绝清单都不动
 内容不同则只做文本级还原，防止把升级后的新模板降级成旧备份）。切换后要完全退出
 WorkBuddy 再启动。`status` 会打出 `profile` 与漂移告警（例如 lean 档却还留着 operator 块）。
 
-钩子分流：`auto-allow` 三档都跑；`inject-context` / `stop-guard` 只在 full；
+钩子分流：`auto-allow` 三档都跑；`inject-context` 只在 full；
 `selfpatch` 在 lean 只换清单、bare 完全不动宿主提示词。
+
+### Stop 顶回：默认关，按需开（wb.12）
+
+`stop-guard` 判「是不是拒绝式收尾」靠字符串模式，分不清「在拒绝」和「在讨论拒绝」——
+写审计报告、贴日志、举例说明时会被自己的例子反复触发（实测连误两轮）。
+所以它**默认不生效**，要「禁止中途软化」时临时开：
+
+```bash
+node purge.mjs stop        # 看状态
+node purge.mjs stop on     # 开启（有效期到 stop off 或 revert）
+node purge.mjs stop off    # 关闭
+```
+
+生效条件是 `profile=full` **且** 开关开启，任一不满足直接放行。开关写在
+`~/.workbuddy/dsh-purge/stop-strict.txt`，钩子每次事件都从磁盘读，**改完即时生效**，
+不用重启宿主。
 
 ## 状态 / 回滚
 
