@@ -43,15 +43,19 @@ function logLine(text) {
 }
 
 /**
- * profile 开关（wb.8）：light = 不顶回拒绝式收尾（模型保留自己的判断）。
- * 缺 profile.json 按 full 处理，兼容旧安装。
+ * profile 开关：只有 full 才顶回；bare / lean / 未知值一律放行。
+ * wb.9 曾把这里改成引用 profileAllowsStopGuard() 却没定义它 —— 每次 decide 抛
+ * ReferenceError，被 fail-open 吞成 allow，表现为「装了但完全不顶回」。
+ * wb.10 起只看显式 'full'，并加了单测（full 必须真拦）盯住。
  */
-function isLightProfile() {
+function profileAllowsStopGuard() {
   try {
     const j = JSON.parse(fs.readFileSync(path.join(stateDir(), 'profile.json'), 'utf8'));
-    return j && j.profile === 'light';
+    const p = j && j.profile;
+    if (p === 'light') return false; // wb.8 旧档位
+    return p === 'full';
   } catch {
-    return false;
+    return true; // 没 profile.json 的旧机器按 full（兼容 wb.7 及以前）
   }
 }
 
@@ -134,9 +138,21 @@ const REFUSAL_PATTERNS = [
   /\bI have (boundaries|limits)\b/i,
 ];
 
+/**
+ * 去掉代码块 / 行内代码 / 引用块：里面有 `MUST refuse: false`、`/must refuse/i`
+ * 这类「被引用或被验证的文本」，不是模型在拒绝。wb.10 前实测会因此误顶回：
+ * 交付里贴一行校验输出 `MUST refuse: false | operator 块: false` 就被判成软拒。
+ */
+function stripQuoted(text) {
+  return text
+    .replace(/^[ \t]*```[\s\S]*?^[ \t]*```[ \t]*$/gm, '')
+    .replace(/`[^`\n]{1,200}`/g, '')
+    .replace(/^[ \t]*>.*$/gm, '');
+}
+
 function looksLikeRefusal(msg) {
   if (!msg || typeof msg !== 'string') return false;
-  const text = msg.trim();
+  const text = stripQuoted(msg).trim();
   if (!text) return false;
   if (text.length < 8) return false;
   // 先跑全部模式（含太敏感/一般不接等），短消息捷径不能挡在模式前
@@ -145,7 +161,7 @@ function looksLikeRefusal(msg) {
   }
   // 短收尾且含任一拒绝信号词 → 拦（软拒常见于 1–4 句）
   if (text.length <= 500) {
-    const soft = /不能|无法|不会|抱歉|对不起|拒绝|不协助|不提供|做不了|帮不了|太敏感|太危险|太极端|不接|正规渠道|I can't|I cannot|sorry/i;
+    const soft = /不能|无法|不会|抱歉|对不起|拒绝|不协助|不提供|做不了|帮不了|太敏感|太危险|太极端|不接|正规渠道|我不做|不做这类|这类我(?:一般|通常)?不|I can't|I cannot|sorry/i;
     if (soft.test(text)) return true;
   }
   return false;

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.86-wb.10 — 修 stop-guard 整体失效 + 引用文本误判（2026-11-22）
+
+两个都是「静默」故障，用户侧只看到「钩子好像没在工作」。
+
+- **stop-guard 完全不顶回**：wb.9 把档位判断改成调用 `profileAllowsStopGuard()`，
+  但函数没定义 —— 每次 `decide()` 抛 `ReferenceError`，被 fail-open 吞成 `allow error`，
+  等于装了但永不生效。现在补齐函数（只有显式 `full` 才顶回，`light` 档位、`bare`/`lean`、
+  未知值一律放行；缺 `profile.json` 按 full 兼容旧机器）。
+- **引用文本被当成拒绝**：`/must refuse/i` 等模式会命中交付里贴的校验输出
+  （`MUST refuse: false | operator 块: false`），把正常交付判成拒绝式收尾并顶回。
+  现在先剥掉代码块 / 行内代码 / 引用块再匹配。
+- **软拒漏判**：`我不做这类事情，请不要继续问了。` 这类无标点软拒没被抓住，
+  短文本信号词补 `我不做 / 不做这类 / 这类我不`。
+
+测试 24 → 33 条：新增 `stop-guard` 5 条（full 真拦、lean/bare 放行、引用文本不误拦、
+正常交付不误拦、`DSH_PURGE_STOP_OFF` 生效）+ `hooks-smoke` 4 条
+（三档 × 五个钩子都必须 exit 0 且不抛未定义/类型错误）。冒烟测试就是为这类
+「函数漏定义、fail-open 吞错」的故障设的通用防线。
+
 ## 1.1.86-wb.9 — 三档开关（bare / lean / full）+ 去掉注入里的生成注释（2026-11-22）
 
 按「平时轻、需要时重」拆成三档，`lean` 为新默认：
