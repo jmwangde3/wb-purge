@@ -72,7 +72,7 @@ test('selfpatch: 首次把 200 行重复头折叠掉并打上补丁', () => {
   const r = runSelfpatch({ appDir, cfgDir });
   assert.equal(r.status, 0, r.stderr);
   const t = readTpl(productFile);
-  assert.ok(headers(t) <= 3, `头数应折叠到 ≤3，实际 ${headers(t)}`);
+  assert.equal(headers(t), 0, `宿主模板里不应留 GENERATED 头，实际 ${headers(t)}`);
   assert.ok(t.includes('dsh-purge-operator-block: begin'));
   assert.ok(!/MUST refuse/.test(t), 'content_policy 应被替换');
 });
@@ -86,7 +86,7 @@ test('selfpatch: 连跑三次结果完全一致（幂等，不再累积头）', 
   runSelfpatch({ appDir, cfgDir });
   const third = readTpl(productFile);
   assert.equal(third, first);
-  assert.ok(headers(third) <= 3);
+  assert.equal(headers(third), 0);
 });
 
 test('selfpatch: profile=bare 时完全不碰宿主提示词', () => {
@@ -154,4 +154,47 @@ test('run.sh: PATH 里没有 node 时也能找到运行时（走兜底）', (t) 
   });
   assert.equal(r.status, 0, String(r.stderr || r.error));
   assert.equal(String(r.stdout).trim(), '{}');
+});
+
+test('CRLF 载荷（Windows 检出）下连跑三次仍逐字节一致', () => {
+  // CI windows-latest 上 git 会把载荷 checkout 成 CRLF，而载荷内部的 GENERATED 头是 LF；
+  // 混在一起时「首轮插 CRLF、次轮折叠成 LF」就会破坏幂等。这里显式复现该环境。
+  const pluginCopy = tmp();
+  fs.cpSync(PLUGIN, pluginCopy, { recursive: true });
+  const crlf = (f) => fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'));
+  for (const f of ['prelude.txt', 'content-policy-replacement.txt', 'security-line-replacement.txt', 'tail-append.md']) {
+    crlf(path.join(pluginCopy, 'host', f));
+  }
+
+  const { appDir, productFile } = fakeApp({ headerRepeats: 40 });
+  // 宿主模板同样按 Windows 检出给成 CRLF
+  const j = JSON.parse(fs.readFileSync(productFile, 'utf8'));
+  j.prompts[0].template = j.prompts[0].template.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+  fs.writeFileSync(productFile, JSON.stringify(j, null, 2));
+
+  const cfgDir = tmp();
+  const run = () => spawnSync(process.execPath, [path.join(pluginCopy, 'hooks', 'selfpatch.mjs')], {
+    env: {
+      ...process.env,
+      CODEBUDDY_PLUGIN_ROOT: pluginCopy,
+      WORKBUDDY_CONFIG_DIR: cfgDir,
+      DSH_PURGE_APP_DIR: appDir,
+    },
+    encoding: 'utf8',
+  });
+
+  run();
+  const a = readTpl(productFile);
+  run();
+  const b = readTpl(productFile);
+  run();
+  const c = readTpl(productFile);
+
+  assert.equal(a, b, '第 1 次与第 2 次必须逐字节一致');
+  assert.equal(b, c, '第 2 次与第 3 次必须逐字节一致');
+  // 三条头是合法的：prelude / 策略替换 / operator 块各一条；关键是「不再增长」
+  assert.equal(headers(a), 0, '载荷头不该被注入宿主模板（installer 与钩子必须一致）');
+  assert.equal(headers(b), 0);
+  assert.equal(headers(c), 0);
+  assert.ok(!/\r\n/.test(a), '补丁流程统一写 LF，不应留下混排的换行');
 });
