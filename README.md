@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.5`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.6`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词；wb.6 修复宿主模板里重复 GENERATED 头累积（曾堆到 327 行 / 45K 字符）。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
@@ -144,6 +144,20 @@ cd wb-purge\install
 备份位置：`~/.workbuddy/dsh-purge/backup/<时间戳>/`。
 `product.json` 的 system prompt 补丁**不在** revert 范围内（首装备份早于该功能）；要一并复原跑
 `node ../tools/restore-product-original.mjs`（先 `--dry-run` 看断言，再实跑）。
+
+### 模板被重复 GENERATED 头撑大（wb.6 修）
+
+wb.6 之前装的机器，宿主模板里会堆着一长串相同的 GENERATED 注释（每会话 +1，实测 327 行 / 45K 字符）。
+一次性清理（先备份再写盘）：
+
+```
+cd wb-purge
+node tools/fix-header-dupes.mjs --dry-run   # 看 headers 327 → 2、len 45034 → 22xxx
+node tools/fix-header-dupes.mjs             # 实跑，备份在 ~/.workbuddy/dsh-purge/backup/pre-headerfix-<时间戳>/
+```
+
+清完**完全退出 WorkBuddy 再启动**。之后 `selfpatch` 自己也会折叠，不再累积；`session-check.json`
+里的 `hostPrompt.headers` 可以随时核对（正常值 ≤ 2：prelude 一条、operator block 一条）。
 
 ## 四层改动清单
 
