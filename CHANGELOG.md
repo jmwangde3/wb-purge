@@ -1,5 +1,17 @@
 # Changelog
 
+## 构建 / 测试（不发版，2026-11-22）
+
+修 CI 红叉，两个都是平台差异，不是插件逻辑问题：
+
+- **windows-latest `check` 全红**：`build/generate.mjs --check` 逐字节比对派生文件，
+  而 git 在 Windows 检出时按 `core.autocrlf=true` 把 LF 转成 CRLF → 13 个报 12 个 DRIFT。
+  改为比对前归一换行符（`\r\n` → `\n`），派生文件内容判定与换行风格无关。
+- **ubuntu-latest node22 `test` 报 Cannot find module '.../test'**：
+  `node --test test/` 在 node 22 上把目录当模块 resolve（node 20 能过）。
+  新增 `test/run-tests.mjs`：用 fs 列 `*.test.mjs` 再以显式路径调 `node --test`，
+  同时绕开 Windows 下 npm 用 cmd.exe 不做 glob 展开的问题。
+
 ## 1.1.86-wb.12 — Stop 顶回改为默认关闭、按需开启（2026-11-22）
 
 `stop-guard` 靠字符串模式猜「收尾语气」，结构上分不清「模型在拒绝」和「模型在讨论拒绝」。

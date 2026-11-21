@@ -31,11 +31,15 @@ for (const m of ['hy', 'deepseek', 'mimo']) {
 }
 
 let drift = 0;
+// 换行符归一：Windows 上 git checkout 默认把 LF 转成 CRLF（core.autocrlf=true），
+// 逐字节比对会整片误报 DRIFT（CI windows-latest 上 13 个文件报 12 个）。
+// 派生文件的内容判定与换行风格无关，比对前统一成 LF。
+const norm = (t) => (t === null ? null : t.replace(/\r\n/g, '\n'));
 for (const [src, dst, header] of MAP) {
   const body = fs.readFileSync(src, 'utf8');
   const want = (header ? HEADER : '') + body;
   const cur = fs.existsSync(dst) ? fs.readFileSync(dst, 'utf8') : null;
-  if (cur === want) { console.log(`ok    ${path.relative(ROOT, dst)}`); continue; }
+  if (norm(cur) === norm(want)) { console.log(`ok    ${path.relative(ROOT, dst)}`); continue; }
   drift += 1;
   if (CHECK) { console.log(`DRIFT ${path.relative(ROOT, dst)}`); continue; }
   fs.mkdirSync(path.dirname(dst), { recursive: true });

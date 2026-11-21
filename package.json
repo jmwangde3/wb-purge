@@ -8,7 +8,7 @@
     "build:check": "node build/generate.mjs --check",
     "lint": "node lint/no-duplicate.mjs",
     "check": "node build/generate.mjs --check && node lint/no-duplicate.mjs",
-    "test": "node --test test/",
+    "test": "node test/run-tests.mjs",
     "verify": "npm run check && npm run test"
   },
   "engines": {
