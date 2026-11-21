@@ -179,7 +179,7 @@ function writeState(state) {
 
 function decide(input) {
   if (process.env.DSH_PURGE_STOP_OFF === '1') return allow('off');
-  if (isLightProfile()) return allow('profile=light');
+  if (!profileAllowsStopGuard()) return allow('profile!=full');
 
   const last = typeof input?.last_assistant_message === 'string'
     ? input.last_assistant_message : '';

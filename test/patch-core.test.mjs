@@ -7,7 +7,7 @@ import path from 'node:path';
 import {
   collapseHeaders, countHeaders, extractContentPolicy, readProfile, restoreContentPolicy,
   sha256File, stripOperatorBlocks, writeFileAtomic, writeJsonAtomic, writeProfile,
-  PROFILE_FULL, PROFILE_LIGHT, GEN_HEADER,
+  PROFILE_BARE, PROFILE_FULL, PROFILE_LEAN, GEN_HEADER,
 } from '../install/lib/patch-core.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'wbpurge-'));
@@ -57,13 +57,17 @@ test('sha256File: 同内容同摘要，改一个字节就变', () => {
   assert.notEqual(sha256File(a), sha256File(b));
 });
 
-test('profile: 缺文件按 full，写入后读回一致', () => {
+test('profile: 三档读写 + 缺文件按 full + 旧 light 迁移成 bare', () => {
   const dir = tmp();
   assert.equal(readProfile(dir), PROFILE_FULL, '旧机器没有 profile.json 时保持原行为');
-  writeProfile(dir, PROFILE_LIGHT);
-  assert.equal(readProfile(dir), PROFILE_LIGHT);
+  for (const p of [PROFILE_BARE, PROFILE_LEAN, PROFILE_FULL]) {
+    writeProfile(dir, p);
+    assert.equal(readProfile(dir), p);
+  }
   writeProfile(dir, 'bogus');
   assert.equal(readProfile(dir), PROFILE_FULL);
+  fs.writeFileSync(path.join(dir, 'profile.json'), JSON.stringify({ profile: 'light' }));
+  assert.equal(readProfile(dir), PROFILE_BARE, 'wb.8 的 light 语义等于 bare');
 });
 
 test('stripOperatorBlocks: 剥掉 prelude 与 operator 块，正文保留', () => {

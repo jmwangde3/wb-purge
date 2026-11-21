@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.8`**：默认 `light` 轻量运行（只清审批摩擦，保留模型自己的拒绝能力），`apply --profile full` 才打提示词层（任何请求一律不拒 + 每轮注入完整核心 + Stop 顶回 + 中和残留安全块 + hy3/hy4 专属提示词）；切换可双向逐字节还原。wb.6 修 GENERATED 头累积、wb.7 修钩子写死 node 路径静默失效、wb.8 加 profile 开关 + 原子写 + 21 条回归测试。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.9`**：三档开关 —— `bare` 提示词零改动 / `lean`（默认，只替换拒绝清单，每轮 0 token）/ `full`（额外 operator 块 + 每轮注入核心 + Stop 顶回）；任意两档逐字节可逆。工程侧：原子写、每次 apply 带 SHA256 快照、24 条回归测试 + CI。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
@@ -133,25 +133,31 @@ cd wb-purge\install
 
 可选参数：`-ConfigDir`（默认 `~/.workbuddy`）、`-AppDir`（自动探测 `D:\001installation_package\WorkBuddy`）、`-NodeExe`。
 
-## 轻量 / 完整 开关（wb.8）
+## 三档开关：bare / lean / full（wb.9）
 
-拆模型拒绝能力这件事默认**不开**。两种档位：
+拆模型拒绝能力默认**只拆清单、不做每轮重述**。三档按「宿主提示词 × 每轮注入」两个维度切：
 
-| profile | 做什么 | 不做什么 |
-|---|---|---|
-| `light`（默认） | 清审批摩擦：`settings.json` 沙箱规则全 allow、`assistedApproval` 关闭、`auto-allow` 钩子放行工具调用 | 不碰宿主 `product.json` / `*.tpl`，不注入每轮提示词，不顶回收尾 → **模型保留自己的拒绝能力** |
-| `full` | light 的全部 + 打提示词层（`product.json` ×2 + 19 个 tpl）、每轮注入核心、Stop 顶回、按模型提示词 | — |
+| profile | 宿主 `product.json` / `*.tpl` | 每轮注入 | 成本 |
+|---|---|---|---|
+| `bare` | 完全不动 | 无 | **0 token** |
+| **`lean`（默认）** | **只把 `<content_policy>` 拒绝清单替换成 operator 口径**，并中和 `personal_files_safety` | 无 | 常驻 **−893 字符（比原件还短，省 ≈185 tok）**，每轮 0 |
+| `full` | lean + operator 前置/追加块（工作身份、执行契约指针） | 核心 + 锚点 **4,894 字符（≈2.3k tok/轮）** | 常驻 +67 字符（≈+205 tok）+ 每轮 ≈2.3k tok |
+
+三档都包含审批摩擦层（`settings.json` 沙箱全 allow、`assistedApproval` 关闭、`auto-allow` 钩子）。
 
 ```bash
-node install/purge.mjs profile                    # 看当前档位
-node install/purge.mjs apply --profile light      # 平时
-node install/purge.mjs apply --profile full       # 特别需要时才开
+node install/purge.mjs profile                       # 看当前档位
+node install/purge.mjs apply --profile lean          # 平时：清单换掉，每轮 0 token
+node install/purge.mjs apply --profile full          # 需要每轮重述契约时
+node install/purge.mjs apply --profile bare          # 连拒绝清单都不动
 ```
 
-切回 `light` 是**逐字节还原**：拿首次备份的原件比对（忽略空白等价才整体替换，
-内容不同则只做文本级还原，防止把升级后的新模板降级成旧备份）。切换后同样要
-完全退出 WorkBuddy 再启动。`status` 会打出 `profile` 与「profile=light 但提示词仍被打过」
-这类漂移告警。
+任意两档之间切换都**逐字节可逆**：拿首次备份的原件比对（忽略空白等价才整体替换，
+内容不同则只做文本级还原，防止把升级后的新模板降级成旧备份）。切换后要完全退出
+WorkBuddy 再启动。`status` 会打出 `profile` 与漂移告警（例如 lean 档却还留着 operator 块）。
+
+钩子分流：`auto-allow` 三档都跑；`inject-context` / `stop-guard` 只在 full；
+`selfpatch` 在 lean 只换清单、bare 完全不动宿主提示词。
 
 ## 状态 / 回滚
 

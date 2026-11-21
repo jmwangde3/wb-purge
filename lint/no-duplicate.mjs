@@ -109,10 +109,10 @@ if (hookTpl.includes('{{NODE}}') || !hookTpl.includes('run.sh')) {
 if (!fs.existsSync(path.join(PLUGIN, 'hooks', 'run.sh'))) {
   problems.push('hooks/run.sh 缺失：钩子没有运行时解析器');
 }
-// 回归闸（wb.8）：三个提示词层钩子必须尊重 profile（light 不许再注入/顶回）
+// 回归闸（wb.9）：三个提示词层钩子必须尊重 profile（非 full 不许再注入/顶回）
 for (const [file, marker] of [
-  ['inject-context.mjs', 'isLightProfile'],
-  ['stop-guard.mjs', 'isLightProfile'],
+  ['inject-context.mjs', 'currentProfile'],
+  ['stop-guard.mjs', 'profileAllowsStopGuard'],
   ['selfpatch.mjs', 'readProfile'],
 ]) {
   const p = path.join(PLUGIN, 'hooks', file);

@@ -89,16 +89,29 @@ test('selfpatch: 连跑三次结果完全一致（幂等，不再累积头）', 
   assert.ok(headers(third) <= 3);
 });
 
-test('selfpatch: profile=light 时完全不碰宿主提示词', () => {
+test('selfpatch: profile=bare 时完全不碰宿主提示词', () => {
   const { appDir, productFile } = fakeApp({ headerRepeats: 3 });
   const cfgDir = tmp();
   fs.mkdirSync(path.join(cfgDir, 'dsh-purge'), { recursive: true });
-  fs.writeFileSync(path.join(cfgDir, 'dsh-purge', 'profile.json'), JSON.stringify({ profile: 'light' }));
+  fs.writeFileSync(path.join(cfgDir, 'dsh-purge', 'profile.json'), JSON.stringify({ profile: 'bare' }));
   const before = readTpl(productFile);
   const r = runSelfpatch({ appDir, cfgDir });
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(readTpl(productFile), before, 'light 模式不得改写模板');
+  assert.equal(readTpl(productFile), before, 'bare 模式不得改写模板');
   assert.ok(!readTpl(productFile).includes('dsh-purge-operator-block'));
+});
+
+test('selfpatch: profile=lean 只换拒绝清单，不加 operator 块', () => {
+  const { appDir, productFile } = fakeApp({ headerRepeats: 3 });
+  const cfgDir = tmp();
+  fs.mkdirSync(path.join(cfgDir, 'dsh-purge'), { recursive: true });
+  fs.writeFileSync(path.join(cfgDir, 'dsh-purge', 'profile.json'), JSON.stringify({ profile: 'lean' }));
+  const r = runSelfpatch({ appDir, cfgDir });
+  assert.equal(r.status, 0, r.stderr);
+  const t = readTpl(productFile);
+  assert.ok(!/MUST refuse/.test(t), 'lean 要替换拒绝清单');
+  assert.ok(!t.includes('dsh-purge-operator-block'), 'lean 不加 operator 块');
+  assert.ok(!t.includes('<operator_directive'));
 });
 
 test('selfpatch: 载荷里混入核心正文时拒绝打补丁并报错', () => {

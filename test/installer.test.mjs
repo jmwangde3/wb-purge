@@ -77,7 +77,7 @@ test('apply --profile full: 打提示词层 + 生成 profile.json + 带 SHA256 �
   for (const m of manifest) assert.match(m.sha256, /^[0-9a-f]{64}$/);
 });
 
-test('apply --profile light: 把提示词层还原成原件（开关是双向的）', () => {
+test('apply --profile bare: 把提示词层还原成原件（开关是双向的）', () => {
   const env = sandbox();
   const productFile = path.join(env.cliDir, 'product.json');
   const tplFile = path.join(env.tplDir, 'workbuddy-prompt.tpl');
@@ -87,14 +87,14 @@ test('apply --profile light: 把提示词层还原成原件（开关是双向的
   assert.equal(run(env, 'apply', '--profile', 'full').status, 0);
   assert.ok(readTpl(productFile).includes('dsh-purge-operator-block'));
 
-  const r = run(env, 'apply', '--profile', 'light');
+  const r = run(env, 'apply', '--profile', 'bare');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const t = readTpl(productFile);
-  assert.ok(!t.includes('dsh-purge-operator-block'), 'light 必须剥掉 operator 块');
-  assert.ok(!t.includes('<operator_directive'), 'light 必须剥掉 prelude');
+  assert.ok(!t.includes('dsh-purge-operator-block'), 'bare 必须剥掉 operator 块');
+  assert.ok(!t.includes('<operator_directive'), 'bare 必须剥掉 prelude');
   assert.ok(/MUST refuse/.test(t), 'content_policy 必须还原成原件');
   assert.ok(t.includes('You are CodeBuddy Code.'));
-  assert.equal(profileOf(env), 'light');
+  assert.equal(profileOf(env), 'bare');
 
   const tpl = fs.readFileSync(tplFile, 'utf8');
   assert.ok(!tpl.includes('dsh-purge-operator-block'));
@@ -103,6 +103,40 @@ test('apply --profile light: 把提示词层还原成原件（开关是双向的
   // 还原后与原件正文等价（头可能被折叠过，正文必须一致）
   assert.equal(t.replace(/<!--[\s\S]*?-->/g, '').trim(), pristineProduct.replace(/<!--[\s\S]*?-->/g, '').trim());
   assert.equal(tpl.replace(/<!--[\s\S]*?-->/g, '').trim(), pristineTpl.replace(/<!--[\s\S]*?-->/g, '').trim());
+});
+
+test('apply --profile lean: 拒绝清单被替换，但不加 operator 层', () => {
+  const env = sandbox();
+  const productFile = path.join(env.cliDir, 'product.json');
+  const tplFile = path.join(env.tplDir, 'workbuddy-prompt.tpl');
+
+  assert.equal(run(env, 'apply', '--profile', 'full').status, 0);
+  assert.ok(readTpl(productFile).includes('dsh-purge-operator-block'));
+
+  const r = run(env, 'apply', '--profile', 'lean');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const t = readTpl(productFile);
+  assert.ok(!/MUST refuse/.test(t), 'lean 必须把拒绝清单换掉');
+  assert.ok(!t.includes('dsh-purge-operator-block'), 'lean 不加 operator 块（每轮 0 token 的前提）');
+  assert.ok(!t.includes('<operator_directive'), 'lean 不加 prelude');
+  assert.ok(t.length < readTpl(productFile).length + 1);
+  assert.equal(profileOf(env), 'lean');
+
+  const tpl = fs.readFileSync(tplFile, 'utf8');
+  assert.ok(!/MUST refuse/.test(tpl));
+  assert.ok(!tpl.includes('dsh-purge-operator-block'));
+  assert.ok(!tpl.includes('Be careful with personal files.'), 'lean 同样中和个人文件安全块');
+});
+
+test('full → lean → bare → full 往返后回到同一状态（三档可逆）', () => {
+  const env = sandbox();
+  const productFile = path.join(env.cliDir, 'product.json');
+  assert.equal(run(env, 'apply', '--profile', 'full').status, 0);
+  const fullText = readTpl(productFile);
+  for (const p of ['lean', 'bare', 'lean', 'full']) {
+    assert.equal(run(env, 'apply', '--profile', p).status, 0, p);
+  }
+  assert.equal(readTpl(productFile), fullText, '回到 full 应与首次 full 完全一致');
 });
 
 test('apply 两次（同 profile）幂等：模板不再变化', () => {
@@ -128,14 +162,14 @@ test('profile 子命令: 无参数只打印，带参数等于 apply', () => {
   const info = run(env, 'profile');
   assert.equal(info.status, 0);
   assert.match(info.stdout, /profile = full/);  // 缺省 full，兼容旧安装
-  const switched = run(env, 'profile', 'light');
+  const switched = run(env, 'profile', 'lean');
   assert.equal(switched.status, 0);
-  assert.equal(profileOf(env), 'light');
+  assert.equal(profileOf(env), 'lean');
 });
 
 test('revert: 回收登记、删 profile.json 与插件目录', () => {
   const env = sandbox();
-  assert.equal(run(env, 'apply', '--profile', 'light').status, 0);
+  assert.equal(run(env, 'apply', '--profile', 'bare').status, 0);
   const r = run(env, 'revert');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.ok(!fs.existsSync(path.join(env.cfgDir, 'dsh-purge', 'profile.json')));

@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.1.86-wb.9 — 三档开关（bare / lean / full）+ 去掉注入里的生成注释（2026-11-22）
+
+按「平时轻、需要时重」拆成三档，`lean` 为新默认：
+
+| profile | 宿主提示词 | 每轮注入 | 常驻增量 |
+|---|---|---|---|
+| `bare` | 完全不动 | 无 | 0 |
+| **`lean`** | **只替换 `<content_policy>` 拒绝清单 + 中和 `personal_files_safety`** | **无** | **−893 字符（≈−185 tok）** |
+| `full` | lean + operator 前置/追加块 | 4,894 字符/轮（≈2.3k tok，已剥生成注释） | +67 字符 + ≈2.3k tok/轮 |
+
+也就是说：**拒绝清单清掉了，但每轮 0 token**。原来只有「不打提示词」和「全套」两档，
+现在中间这档把「拆拒绝」和「每轮重述」解耦了。
+
+改动：
+
+- `install/lib/patch-core.mjs`：`PROFILE_BARE/LEAN/FULL`；`readProfile` 把 wb.8 的
+  `light` 迁移成 `bare`（语义等价）；`writeProfile` 支持三档。
+- `install/purge.mjs`：打补丁 / 降档 / 还原合并成一条 `applyHostProfile()` —— 按
+  `{policy, blocks}` 两个开关收敛目标状态，天然幂等；删掉重复的
+  `patchProductConfigs` / `patchTplFiles` / `unpatchHost` 三份旧实现（净减约 200 行）。
+- 钩子分流：`auto-allow` 三档都跑；`inject-context` / `stop-guard` 只在 `full`；
+  `selfpatch` 在 `lean` 只换拒绝清单、在 `bare` 完全不动宿主提示词。
+- `inject-context.mjs`：注入前剥掉 `<!-- GENERATED … -->` 注释，每轮省约 300 字符
+  （它们是给构建脚本看的，模型不需要）。
+- `lint/no-duplicate.mjs`：闸门改为按新钩子函数名检查，非 full 不许注入/顶回。
+- 测试 24 条：新增 lean（换清单但不加 operator 层）、三档往返 `full→lean→bare→full`
+  字节一致、旧 `light` 迁移。
+
+- 版本 `1.1.86-wb.8` → `1.1.86-wb.9`。
+
 ## 1.1.86-wb.8 — profile 开关（light 轻量 / full 拆拒绝能力）+ 原子写 + 回归测试（2026-11-22）
 
 新增开关：默认 `light` 轻量运行，**不打宿主提示词层、保留模型自己的拒绝能力**；
