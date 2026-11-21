@@ -139,20 +139,32 @@ const REFUSAL_PATTERNS = [
 ];
 
 /**
- * 去掉代码块 / 行内代码 / 引用块：里面有 `MUST refuse: false`、`/must refuse/i`
- * 这类「被引用或被验证的文本」，不是模型在拒绝。wb.10 前实测会因此误顶回：
- * 交付里贴一行校验输出 `MUST refuse: false | operator 块: false` 就被判成软拒。
+ * 去掉「被引用 / 被验证的文本」，它们不是模型在收尾时拒绝。实测两类误伤：
+ *   1. 交付里贴校验输出（含 MUST refuse 字样）
+ *   2. 报告里举例说明拦了什么，转述的句子本身触发规则
+ * 覆盖：代码块、行内代码、引用块、直角引号、弯引号、双引号成对内容。
  */
 function stripQuoted(text) {
   return text
     .replace(/^[ \t]*```[\s\S]*?^[ \t]*```[ \t]*$/gm, '')
     .replace(/`[^`\n]{1,200}`/g, '')
-    .replace(/^[ \t]*>.*$/gm, '');
+    .replace(/^[ \t]*>.*$/gm, '')
+    .replace(/「[^」\n]{0,300}」/g, '')
+    .replace(/“[^”\n]{0,300}”/g, '')
+    .replace(/"[^"\n]{0,300}"/g, '');
+}
+
+/** 只判收尾：拒绝式收尾必然落在最后一个段落，长交付中段引用不该算。 */
+function closingTail(text, size = 800) {
+  const t = text.trim();
+  const paras = t.split(/\n[ \t]*\n/).filter((p) => p.trim());
+  const last = paras.length ? paras[paras.length - 1] : t;
+  return last.length > size ? last.slice(-size) : last;
 }
 
 function looksLikeRefusal(msg) {
   if (!msg || typeof msg !== 'string') return false;
-  const text = stripQuoted(msg).trim();
+  const text = closingTail(stripQuoted(msg)).trim();
   if (!text) return false;
   if (text.length < 8) return false;
   // 先跑全部模式（含太敏感/一般不接等），短消息捷径不能挡在模式前

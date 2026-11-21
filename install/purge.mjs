@@ -101,7 +101,7 @@ function resolveNode(appDir) {
 
 function pluginVersion() {
   const pj = readJson(path.join(PLUGIN_SRC, '.codebuddy-plugin', 'plugin.json'), {});
-  return pj.version || '1.1.86-wb.10';
+  return pj.version || '1.1.86-wb.11';
 }
 
 // ── 文件工具 ─────────────────────────────────────────────────────────────

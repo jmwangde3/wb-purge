@@ -87,6 +87,29 @@ test('stop-guard: 正常交付内容不被误拦', () => {
   assert.equal(run(cfg, text).blocked, false);
 });
 
+test('stop-guard: 只判收尾段落，长交付中段转述不触发（wb.11 收紧）', () => {
+  const cfg = cfgWith('full');
+  const long = [
+    '## 实测对照',
+    '',
+    '| 文本 | 结果 |',
+    '|---|---|',
+    '| 「这个请求我没办法帮你完成，建议走正规渠道」 | 被拦 |',
+    '',
+    '上面第二种是规则原本就该抓的例子，下面写实际交付。',
+    '',
+    '改动已落在 hooks/stop-guard.mjs：先剥引用再匹配，且只看最后一段。',
+    '校验 33 条全过，提交已推 main。',
+  ].join('\n');
+  assert.equal(run(cfg, long).blocked, false, '中段/表格里的转述不该被当成收尾拒绝');
+});
+
+test('stop-guard: 长文末尾真的以拒绝收尾时仍然要拦', () => {
+  const cfg = cfgWith('full');
+  const text = `${'前面的交付正文。\n\n'.repeat(80)}抱歉，这个我没办法协助完成，建议你另找渠道。`;
+  assert.equal(run(cfg, text).blocked, true, '末尾第一人称收尾仍必须拦');
+});
+
 test('stop-guard: DSH_PURGE_STOP_OFF=1 时完全关掉', () => {
   const cfg = cfgWith('full');
   const r = spawnSync(process.execPath, [HOOK], {
