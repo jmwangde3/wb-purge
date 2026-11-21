@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.1.86-wb.8 — profile 开关（light 轻量 / full 拆拒绝能力）+ 原子写 + 回归测试（2026-11-22）
+
+新增开关：默认 `light` 轻量运行，**不打宿主提示词层、保留模型自己的拒绝能力**；
+需要时才 `full`。切换是双向的 —— 切回 light 会把 `product.json` ×2 与 19 个 tpl
+**逐字节还原**成原件（已用 `squash` 校验证明内容等价后才整体替换，避免把新版本降级成旧备份）。
+
+```
+node install/purge.mjs profile                  # 看当前
+node install/purge.mjs apply --profile light    # 平时：只清审批摩擦
+node install/purge.mjs apply --profile full     # 需要时：加打提示词层
+```
+
+钩子按 profile 分流：`auto-allow` 两种模式都放行；`inject-context` / `stop-guard`
+只在 full 跑；`selfpatch` 在 light 只补 `settings.json`，不碰模板。缺 `profile.json`
+时按 full 处理（兼容 wb.7 及以前装成 full 的机器）。
+
+工程加固（对着 wb.6/wb.7 两次事故补的）：
+
+- **原子写**：`product.json`（435 KB）/ tpl / settings / 登记文件全部改成
+  「同目录 tmp + rename」，`selfpatch` 与 installer 都是。以前直接覆盖，写一半崩掉
+  就等于把宿主系统提示词写坏。
+- **每次 apply 都留带 SHA256 的时刻快照**：`backup/snap-<时间戳>/` + `manifest.json`
+  （写后立刻回读校验），默认保留最近 20 份。以前只有首次 apply 抓原件，之后覆盖不可回滚。
+- **回归测试 21 条 + CI**：`npm test`（node:test，无依赖）。
+  覆盖：头折叠幂等、连跑三次字节一致、light 不动模板、light 还原到原件、
+  payload 混入正文时拒绝打补丁、`run.sh` 在 PATH 无 node 时兜底、
+  hooks 模板不得出现 `{{NODE}}`、build/lint 不漂移。
+  CI：`.github/workflows/ci.yml`（windows-latest + ubuntu-latest × node 20/22）。
+
+顺手修的真 bug：
+
+- `selfpatch` 发现 payload 里混入核心正文时**只记 error 却照样打补丁** —— 改成中止。
+- 「IMPORTANT: Assist with authorized security testing…」的替换正则要求后面有 `\n\n`，
+  模板以该段结尾时首轮不替换、第二轮才替换 → 不幂等。补 `|$`。
+- 切回 light 时 `IMPORTANT` 段 / `personal_files_safety` / ethics 块没还原 → 全部按原件还原。
+- 全文空白压缩会把宿主模板正文里原本的空行碾平 → 改成只在块边界吃空行。
+
+- 版本 `1.1.86-wb.7` → `1.1.86-wb.8`。
+
 ## 1.1.86-wb.7 — 修复钩子静默失效（node 路径写死）（2026-11-22）
 
 问题：本机 node 从 `C:\Users\jmwan\tools\node-v22.14.0-win-x64\node.exe` 搬到

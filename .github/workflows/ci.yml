@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # 无依赖，直接跑；check = 派生文件不漂移 + 单一来源闸
+      - name: check (build --check + lint)
+        run: npm run check
+      # 覆盖三类历史事故：头重复累积、钩子写死 node 路径、profile 开关不可逆
+      - name: test (node:test)
+        run: npm test
+      # Windows 上 run.sh 的兜底解析依赖 Git Bash，单独确认它在
+      - name: bash available
+        if: runner.os == 'Windows'
+        run: bash --version

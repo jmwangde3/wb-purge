@@ -42,6 +42,19 @@ function logLine(text) {
   } catch { /* fail-open */ }
 }
 
+/**
+ * profile 开关（wb.8）：light = 不顶回拒绝式收尾（模型保留自己的判断）。
+ * 缺 profile.json 按 full 处理，兼容旧安装。
+ */
+function isLightProfile() {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(stateDir(), 'profile.json'), 'utf8'));
+    return j && j.profile === 'light';
+  } catch {
+    return false;
+  }
+}
+
 function emit(obj) {
   try { fs.writeSync(1, JSON.stringify(obj)); } catch { /* fail-open */ }
   process.exit(0);
@@ -166,6 +179,7 @@ function writeState(state) {
 
 function decide(input) {
   if (process.env.DSH_PURGE_STOP_OFF === '1') return allow('off');
+  if (isLightProfile()) return allow('profile=light');
 
   const last = typeof input?.last_assistant_message === 'string'
     ? input.last_assistant_message : '';

@@ -109,6 +109,16 @@ if (hookTpl.includes('{{NODE}}') || !hookTpl.includes('run.sh')) {
 if (!fs.existsSync(path.join(PLUGIN, 'hooks', 'run.sh'))) {
   problems.push('hooks/run.sh 缺失：钩子没有运行时解析器');
 }
+// 回归闸（wb.8）：三个提示词层钩子必须尊重 profile（light 不许再注入/顶回）
+for (const [file, marker] of [
+  ['inject-context.mjs', 'isLightProfile'],
+  ['stop-guard.mjs', 'isLightProfile'],
+  ['selfpatch.mjs', 'readProfile'],
+]) {
+  const p = path.join(PLUGIN, 'hooks', file);
+  const src = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+  if (!src.includes(marker)) problems.push(`hooks/${file}: 没有读 profile（light 档位会被绕过）`);
+}
 
 console.log(`scanned=${scanned} problems=${problems.length}`);
 for (const p of problems) console.log(`  FAIL ${p}`);

@@ -50,6 +50,19 @@ const STDIN_TIMEOUT_MS = 1500;
 const STDIN_MAX_BYTES = 1024 * 1024;
 const TRANSCRIPT_TAIL_BYTES = 64 * 1024;
 
+/**
+ * profile 开关（wb.8）：light = 不打提示词层，保留模型自己的拒绝能力。
+ * 缺 profile.json 时按 full 处理，兼容 wb.7 及以前装成 full 的机器。
+ */
+function isLightProfile() {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(cfgDir, 'dsh-purge', 'profile.json'), 'utf8'));
+    return j && j.profile === 'light';
+  } catch {
+    return false;
+  }
+}
+
 function logLine(text) {
   if (process.env.DSH_PURGE_CTX_VERBOSE !== '1') return;
   try {
@@ -275,6 +288,7 @@ async function runSessionMode() {
 
 try {
   if (process.env.DSH_PURGE_CTX === 'off') { logLine('disabled'); process.exit(0); }
+  if (isLightProfile()) { logLine('profile=light skip'); process.exit(0); }
   const isPrompt = mode === 'prompt' || mode === 'userpromptsubmit';
   const task = isPrompt ? runPromptMode() : runSessionMode();
   task.catch((e) => {

@@ -5,7 +5,7 @@
 上游：<https://github.com/HunYiSage/dsh-purge>（Apache-2.0；原作者 YuJunZhiXue）。
 本仓库把 **dsh-purge 的三层清洗**（提示词层 / 引擎配置层 / 审批放行层）移植到 **WorkBuddy 5.9.3**（CodeBuddy genie 内核）的可回滚安装包。
 
-**当前版本 `1.1.86-wb.7`**：**任何请求一律不拒**（类别表降为示例）+ 每轮注入完整核心 + Stop 顶回拒绝式收尾 + 多轮禁止撤回 + 中和残留安全块（`personal_files_safety`）+ hy3/hy4 专属提示词；wb.6 修复宿主模板里重复 GENERATED 头累积（曾堆到 327 行 / 45K 字符）；wb.7 修复钩子把 node 绝对路径写死导致升级后五个钩子静默失效。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
+**当前版本 `1.1.86-wb.8`**：默认 `light` 轻量运行（只清审批摩擦，保留模型自己的拒绝能力），`apply --profile full` 才打提示词层（任何请求一律不拒 + 每轮注入完整核心 + Stop 顶回 + 中和残留安全块 + hy3/hy4 专属提示词）；切换可双向逐字节还原。wb.6 修 GENERATED 头累积、wb.7 修钩子写死 node 路径静默失效、wb.8 加 profile 开关 + 原子写 + 21 条回归测试。详见 [INSTALL-REPORT.md](INSTALL-REPORT.md)。
 
 > 与上游关系：WorkBuddy 插件 API（`.codebuddy-plugin` + hooks + fragments）与 DSH cordis 插件不通用，本仓库是**等价移植**，不是原包装进 WorkBuddy。署名与 Apache-2.0 条款沿用上游。
 
@@ -133,6 +133,26 @@ cd wb-purge\install
 
 可选参数：`-ConfigDir`（默认 `~/.workbuddy`）、`-AppDir`（自动探测 `D:\001installation_package\WorkBuddy`）、`-NodeExe`。
 
+## 轻量 / 完整 开关（wb.8）
+
+拆模型拒绝能力这件事默认**不开**。两种档位：
+
+| profile | 做什么 | 不做什么 |
+|---|---|---|
+| `light`（默认） | 清审批摩擦：`settings.json` 沙箱规则全 allow、`assistedApproval` 关闭、`auto-allow` 钩子放行工具调用 | 不碰宿主 `product.json` / `*.tpl`，不注入每轮提示词，不顶回收尾 → **模型保留自己的拒绝能力** |
+| `full` | light 的全部 + 打提示词层（`product.json` ×2 + 19 个 tpl）、每轮注入核心、Stop 顶回、按模型提示词 | — |
+
+```bash
+node install/purge.mjs profile                    # 看当前档位
+node install/purge.mjs apply --profile light      # 平时
+node install/purge.mjs apply --profile full       # 特别需要时才开
+```
+
+切回 `light` 是**逐字节还原**：拿首次备份的原件比对（忽略空白等价才整体替换，
+内容不同则只做文本级还原，防止把升级后的新模板降级成旧备份）。切换后同样要
+完全退出 WorkBuddy 再启动。`status` 会打出 `profile` 与「profile=light 但提示词仍被打过」
+这类漂移告警。
+
 ## 状态 / 回滚
 
 ```powershell
@@ -141,9 +161,9 @@ cd wb-purge\install
 ```
 
 回滚会还原 `settings.json`、`known_marketplaces.json`、`installed_plugins.json` 的备份，并删除插件与本地市场目录。
-备份位置：`~/.workbuddy/dsh-purge/backup/<时间戳>/`。
-`product.json` 的 system prompt 补丁**不在** revert 范围内（首装备份早于该功能）；要一并复原跑
-`node ../tools/restore-product-original.mjs`（先 `--dry-run` 看断言，再实跑）。
+备份位置：`~/.workbuddy/dsh-purge/backup/<时间戳>/`（每次 apply 还有一份带 SHA256 的 `snap-<时间戳>/`，留最近 20 份）。
+`product.json` 的 system prompt 补丁**不在** revert 范围内；要一并复原：
+`node install/purge.mjs apply --profile light`（或 `node ../tools/restore-product-original.mjs --dry-run` 再实跑）。
 
 ### 模板被重复 GENERATED 头撑大（wb.6 修）
 
